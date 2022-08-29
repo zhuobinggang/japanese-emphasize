@@ -207,7 +207,7 @@ def run(m):
 
 RANDOM_SEEDs = [20, 22, 8, 29, 1648, 1,2]
     
-def experiment():
+def experiment(epoch = 4):
     results_5X5 = []
     train_dss = read_trains()
     test_dss = read_tests()
@@ -215,7 +215,7 @@ def experiment():
         results = []
         for idx in range(5):
             m = create_model_with_seed(RANDOM_SEEDs[idx])
-            for _ in range(4):
+            for _ in range(epoch):
                 train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
             result = test_chain(m, ds_test)
             print(result)
