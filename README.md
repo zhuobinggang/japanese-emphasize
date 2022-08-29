@@ -7,6 +7,7 @@ import numpy as np
 result_5X5 = experiment()
 result_5X5 = np.array(result_5X5)
 print(result_5X5.shape) # (5, 5, 4)
+print(result_5X5) # これは結果です
 ```
 ## 結果の並べ方
 

@@ -61,7 +61,7 @@ class Sector_2022(nn.Module):
     self.init_bert()
     self.init_hook()
     self.opter = t.optim.AdamW(self.get_should_update(), self.learning_rate)
-    self.cuda()
+    # self.cuda()
 
   def init_bert(self):
     self.bert = BertModel.from_pretrained('cl-tohoku/bert-base-japanese-char')
@@ -98,7 +98,8 @@ def test(m, ds_test):
     result_all = []
     for text, labels in ds_test:
         ids = encode(text, toker)
-        out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+        # out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+        out_bert = bert(ids.unsqueeze(0)).last_hidden_state # (1, seq_len + 2, 768)
         out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
         out_mlp = m.classifier(out_bert) # (1, seq_len, 1)
         out_mlp = out_mlp.squeeze() # (seq_len)
@@ -126,11 +127,13 @@ def train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_
                 print(f'finished: {row_idx}/{len(ds_train)}')
                 pass
             ids = encode(text, toker)
-            out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+            # out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+            out_bert = bert(ids.unsqueeze(0)).last_hidden_state # (1, seq_len + 2, 768)
             out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
             out_mlp = m.classifier(out_bert) # (1, seq_len, 1)
             out_mlp = out_mlp[0, :, 0] # (seq_len)
-            labels = t.FloatTensor(labels).cuda() # (seq_len)
+            # labels = t.FloatTensor(labels).cuda() # (seq_len)
+            labels = t.FloatTensor(labels) # (seq_len)
             if labels.shape != out_mlp.shape:
                 print(row_idx)
                 print(ids)
@@ -208,9 +211,9 @@ def experiment():
     results_5X5 = []
     train_dss = read_trains()
     test_dss = read_tests()
-    for idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
+    for _, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
         results = []
-        for _ in range(5):
+        for idx in range(5):
             m = create_model_with_seed(RANDOM_SEEDs[idx])
             for _ in range(4):
                 train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
