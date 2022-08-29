@@ -8,8 +8,6 @@ from transformers import BertJapaneseTokenizer, BertModel
 import datetime
 from itertools import chain
 
-
-
 def label_to_number(case):
     tokens, labels = case
     # tokens = ''.join(tokens)
@@ -24,15 +22,32 @@ def create_model_with_seed(seed):
     print(f'created model with seed {seed} at time {time_string}')
     return m
 
-def read_test():
-    data = readfile('data/data_five/1/test.txt')
+def read_test(name = 'data/data_five/1/test.txt'):
+    data = readfile(name)
     data = [label_to_number(case) for case in data]
     return data
 
-def read_train():
-    data = readfile('data/data_five/1/train.txt')
+def read_train(name = 'data/data_five/1/train.txt'):
+    data = readfile(name)
     data = [label_to_number(case) for case in data]
     return data
+
+def read_tests():
+    datas = []
+    for i in range(1, 6):
+        data = readfile(f'data/data_five/{i}/test.txt')
+        data = [label_to_number(case) for case in data]
+        datas.append(data)
+    return datas
+
+def read_trains():
+    datas = []
+    for i in range(1, 6):
+        data = readfile(f'data/data_five/{i}/train.txt')
+        data = [label_to_number(case) for case in data]
+        datas.append(data)
+    return datas
+
 
 def flatten(l):
     return [item for sublist in l for item in sublist]
@@ -186,6 +201,26 @@ def run(m):
         print(result)
         results.append(result)
     return results
+
+RANDOM_SEEDs = [20, 22, 8, 29, 1648, 1,2]
     
+def experiment():
+    results_5X5 = []
+    train_dss = read_trains()
+    test_dss = read_tests()
+    for idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
+        results = []
+        for _ in range(5):
+            m = create_model_with_seed(RANDOM_SEEDs[idx])
+            for _ in range(4):
+                train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
+            result = test_chain(m, ds_test)
+            print(result)
+            results.append(result)
+        results_5X5.append(results)
+    return results_5X5
+
+
+
 
 
