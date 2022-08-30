@@ -107,7 +107,13 @@ def test(m, ds_test_org):
         out_mlp = m.classifier(out_bert) # (1, seq_len, 1)
         out_mlp = out_mlp.squeeze() # (seq_len)
         target_all.append(labels)
-        result_all.append(out_mlp.tolist())
+        if len(out_mlp.shape) == 0:
+            out_mlp = [out_mlp.item()]
+            print(text)
+            print(labels)
+        else:
+            out_mlp = out_mlp.tolist()
+        result_all.append(out_mlp)
     return result_all, target_all
 
 
@@ -190,8 +196,8 @@ def test_chain(m, ds_test):
     return cal_prec_rec_f1_v2(results, targets)
 
 def run():
-    ds_train = read_train()
-    ds_test = read_test()
+    ds_train = read_train('data/data_five/2/train.txt')
+    ds_test = read_test('data/data_five/2/test.txt')
     results = []
     m = create_model_with_seed(20, cuda = True)
     for _ in range(5):
