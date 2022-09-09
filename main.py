@@ -14,20 +14,20 @@ def label_to_number(case):
     numbers = [1 if label != 'O' else 0 for label in labels]
     return tokens, numbers
 
-def create_model_with_seed(seed, cuda):
+def create_model_with_seed(seed, cuda, wholeword):
     t.manual_seed(seed)
     np.random.seed(seed)
-    m = Sector_2022(cuda = cuda)
+    m = Sector_2022(cuda = cuda, wholeword = wholeword)
     time_string = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f'created model with seed {seed} at time {time_string}')
     return m
 
-def read_test(name = 'data/data_five/1/test.txt'):
+def read_test(name = 'data_five/1/test.txt'):
     data = readfile(name)
     data = [label_to_number(case) for case in data]
     return data
 
-def read_train(name = 'data/data_five/1/train.txt'):
+def read_train(name = 'data_five/1/train.txt'):
     data = readfile(name)
     data = [label_to_number(case) for case in data]
     return data
@@ -35,7 +35,7 @@ def read_train(name = 'data/data_five/1/train.txt'):
 def read_tests():
     datas = []
     for i in range(1, 6):
-        data = readfile(f'data/data_five/{i}/test.txt')
+        data = readfile(f'data_five/{i}/test.txt')
         data = [label_to_number(case) for case in data]
         datas.append(data)
     return datas
@@ -43,7 +43,7 @@ def read_tests():
 def read_trains():
     datas = []
     for i in range(1, 6):
-        data = readfile(f'data/data_five/{i}/train.txt')
+        data = readfile(f'data_five/{i}/train.txt')
         data = [label_to_number(case) for case in data]
         datas.append(data)
     return datas
@@ -53,22 +53,27 @@ def flatten(l):
     return [item for sublist in l for item in sublist]
 
 class Sector_2022(nn.Module):
-  def __init__(self, learning_rate = 2e-5, cuda = False):
+  def __init__(self, learning_rate = 2e-5, cuda = False, wholeword = True):
     super().__init__()
     self.learning_rate = learning_rate
     self.bert_size = 768
     self.verbose = False
-    self.init_bert()
+    self.init_bert(wholeword = wholeword)
     self.init_hook()
     self.opter = t.optim.AdamW(self.get_should_update(), self.learning_rate)
     if cuda:
         self.cuda()
     self.is_cuda = cuda
 
-  def init_bert(self):
-    self.bert = BertModel.from_pretrained('cl-tohoku/bert-base-japanese-char')
-    self.bert.train()
-    self.toker = BertJapaneseTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-char')
+  def init_bert(self, wholeword = True):
+    if wholeword:
+      self.bert = BertModel.from_pretrained('cl-tohoku/bert-base-japanese-whole-word-masking')
+      self.bert.train()
+      self.toker = BertJapaneseTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-whole-word-masking')
+    else:
+      self.bert = BertModel.from_pretrained('cl-tohoku/bert-base-japanese-char')
+      self.bert.train()
+      self.toker = BertJapaneseTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-char')
 
   def get_should_update(self):
     return chain(self.bert.parameters(), self.classifier.parameters())
@@ -136,6 +141,7 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
                 print(f'finished: {row_idx}/{len(ds_train)}')
                 pass
             ids = encode(text, toker)
+            assert ids.shape[0] == len(text) + 2
             if m.is_cuda:
                 out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
                 labels = t.FloatTensor(labels).cuda() # (seq_len)
@@ -196,10 +202,12 @@ def test_chain(m, ds_test):
     return cal_prec_rec_f1_v2(results, targets)
 
 def run():
-    ds_train = read_train('data/data_five/2/train.txt')
-    ds_test = read_test('data/data_five/2/test.txt')
+    # ds_train = read_train('data/data_five/2/train.txt')
+    # ds_test = read_test('data/data_five/2/test.txt')
+    ds_train = read_train('data_five/1/train.txt')
+    ds_test = read_test('data_five/1/test.txt')
     results = []
-    m = create_model_with_seed(20, cuda = True)
+    m = create_model_with_seed(20, cuda = True, wholeword = True)
     for _ in range(5):
         train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
         result = test_chain(m, ds_test)
@@ -207,23 +215,28 @@ def run():
         results.append(result)
     return results
 
-RANDOM_SEEDs = [20, 22, 8, 29, 1648, 1,2]
+RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
     
-def experiment(epoch = 5, cuda = False):
-    results_5X5 = []
+def experiment(epoch = 5, cuda = False, wholeword = True):
+    results_5X5X5 = []
     train_dss = read_trains()
     test_dss = read_tests()
     for _, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
-        results = []
+        fs_by_model = []
         for idx in range(5):
-            m = create_model_with_seed(RANDOM_SEEDs[idx], cuda)
-            for _ in range(epoch):
+            m = create_model_with_seed(RANDOM_SEEDs[idx], cuda, wholeword)
+            fs = []
+            for e in range(epoch):
                 train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
-            result = test_chain(m, ds_test)
-            print(result)
-            results.append(result)
-        results_5X5.append(results)
-    return results_5X5
+                result = test_chain(m, ds_test)
+                print(result)
+                _,_,f,_ = result
+                fs.append(f)
+            fs_by_model.append(fs)
+        results_5X5X5.append(fs_by_model)
+        print('results_5X5X5:')
+        print(results_5X5X5)
+    return results_5X5X5
 
 
 
