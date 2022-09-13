@@ -8,7 +8,7 @@ from transformers import BertJapaneseTokenizer, BertModel
 import datetime
 from itertools import chain
 from torchcrf import CRF
-from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests
+from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests, DATASET_ORDER_SEED
 
 def create_model_with_seed(seed, cuda, wholeword):
     t.manual_seed(seed)
@@ -83,6 +83,7 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
         print(f'Train epoch {epoch_idx}')
         ds = None
         if random_seed:
+            numpy.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
             ds = np.random.permutation(ds_train)
         else:
             ds = ds_train
@@ -262,7 +263,8 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
                 result = test_chain_no_crf(m, ds_test)
                 print(result)
                 _,_,f,_ = result
-                fs.append(f)
+                # fs.append(f)
+                fs.append(result)
             fs_by_model.append(fs)
         results_5X5X5.append(fs_by_model)
         print('results_5X5X5:')

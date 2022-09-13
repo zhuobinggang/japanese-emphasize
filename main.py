@@ -133,6 +133,7 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
         print(f'Train epoch {epoch_idx}')
         ds = None
         if random_seed:
+            numpy.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
             ds = np.random.permutation(ds_train)
         else:
             ds = ds_train
@@ -216,6 +217,7 @@ def run():
     return results
 
 RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
+DATASET_ORDER_SEED = 0
     
 def experiment(epoch = 5, cuda = True, wholeword = True):
     results_5X5X5 = []
@@ -231,7 +233,8 @@ def experiment(epoch = 5, cuda = True, wholeword = True):
                 result = test_chain(m, ds_test)
                 print(result)
                 _,_,f,_ = result
-                fs.append(f)
+                # fs.append(f)
+                fs.append(result)
             fs_by_model.append(fs)
         results_5X5X5.append(fs_by_model)
         print('results_5X5X5:')
