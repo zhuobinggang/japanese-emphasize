@@ -228,6 +228,12 @@ def run(m):
 
 
 RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
+
+def write_result(path, result):
+    f = open(path)
+    f.write(str(result))
+    f.close()
+    print('RESULT WRITTEN')
     
 def experiment(epoch = 5, cuda = True, wholeword = True):
     results_5X5X5 = []
@@ -248,6 +254,7 @@ def experiment(epoch = 5, cuda = True, wholeword = True):
         results_5X5X5.append(fs_by_model)
         print('results_5X5X5:')
         print(results_5X5X5)
+    write_result('with_crf.txt', results_5X5X5)
     return results_5X5X5
 
 def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
@@ -270,4 +277,5 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
         results_5X5X5.append(fs_by_model)
         print('results_5X5X5:')
         print(results_5X5X5)
+    write_result('without_crf.txt', results_5X5X5)
     return results_5X5X5
