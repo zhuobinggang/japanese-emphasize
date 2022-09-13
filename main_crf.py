@@ -83,7 +83,7 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
         print(f'Train epoch {epoch_idx}')
         ds = None
         if random_seed:
-            numpy.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
+            np.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
             ds = np.random.permutation(ds_train)
         else:
             ds = ds_train
@@ -158,7 +158,7 @@ def train_no_crf(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = No
         print(f'Train epoch {epoch_idx}')
         ds = None
         if random_seed:
-            numpy.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
+            np.random.seed(DATASET_ORDER_SEED) # 固定训练顺序
             ds = np.random.permutation(ds_train)
         else:
             ds = ds_train
