@@ -117,6 +117,84 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
     print(delta.seconds)
     return delta.seconds
 
+def test_no_crf(m, ds_test_org):
+    ds_test = ds_test_org.copy()
+    first_time = datetime.datetime.now()
+    toker = m.toker
+    bert = m.bert
+    crf = m.crf
+    target_all = []
+    result_all = []
+    for text, labels in ds_test:
+        ids = encode(text, toker)
+        SEQ_LEN = len(text)
+        assert ids.shape[0] == SEQ_LEN + 2
+        if m.is_cuda:
+            out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+            # labels = t.FloatTensor(labels).cuda() # (seq_len)
+            tags = t.LongTensor([labels]).cuda() # (1, seq_len)
+        else:
+            out_bert = bert(ids.unsqueeze(0)).last_hidden_state # (1, seq_len + 2, 768)
+            # labels = t.FloatTensor(labels) # (seq_len)
+            tags = t.LongTensor([labels]) # (1, seq_len)
+        out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
+        out_mlp = m.classifier(out_bert) # (1, seq_len, 2)
+        out_mlp = out_mlp.view(SEQ_LEN, 2)
+        results = out_mlp.argmax(1) # (seq_len)
+        result_all.append(results)
+        target_all.append(tags.tolist()[0])
+    return result_all, target_all
+
+def train_no_crf(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, random_seed = True):
+    ds_train = ds_train_org.copy()
+    first_time = datetime.datetime.now()
+    toker = m.toker
+    bert = m.bert
+    # crf = m.crf
+    CEL = nn.CrossEntropyLoss()
+    opter = t.optim.AdamW(m.parameters(), m.learning_rate)
+    for epoch_idx in range(epoch):
+        print(f'Train epoch {epoch_idx}')
+        ds = None
+        if random_seed:
+            ds = np.random.permutation(ds_train)
+        else:
+            ds = ds_train
+        for row_idx, (text, labels) in enumerate(ds):
+            if row_idx % 1000 == 0:
+                print(f'finished: {row_idx}/{len(ds_train)}')
+                pass
+            SEQ_LEN = len(text)
+            ids = encode(text, toker)
+            assert ids.shape[0] == SEQ_LEN + 2
+            if m.is_cuda:
+                out_bert = bert(ids.unsqueeze(0).cuda()).last_hidden_state # (1, seq_len + 2, 768)
+                # labels = t.FloatTensor(labels).cuda() # (seq_len)
+                tags = t.LongTensor([labels]).cuda() # (1, seq_len)
+            else:
+                out_bert = bert(ids.unsqueeze(0)).last_hidden_state # (1, seq_len + 2, 768)
+                # labels = t.FloatTensor(labels) # (seq_len)
+                tags = t.LongTensor([labels]) # (1, seq_len)
+            out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
+            out_mlp = m.classifier(out_bert) # (1, seq_len, 2)
+            # Cross entropy loss
+            out_mlp = out_mlp.view(SEQ_LEN, 2) # (seq_len, 2)
+            tags = tags.view(SEQ_LEN) # (seq)
+            loss = CEL(out_mlp, tags)
+            loss.backward()
+            # backward
+            if (row_idx + 1) % batch == 0:
+                if iteration_callback is not None:
+                    iteration_callback()
+                opter.step()
+                opter.zero_grad()
+    opter.step()
+    opter.zero_grad()
+    last_time = datetime.datetime.now()
+    delta = last_time - first_time
+    print(delta.seconds)
+    return delta.seconds
+
 def get_results_and_targets(m, ds_test):
     result_all, target_all = test(m, ds_test)
     results = flatten(result_all)
@@ -125,6 +203,12 @@ def get_results_and_targets(m, ds_test):
 
 def test_chain(m, ds_test):
     results, targets = get_results_and_targets(m, ds_test)
+    return cal_prec_rec_f1_v2(results, targets)
+
+def test_chain_no_crf(m, ds_test):
+    result_all, target_all = test_no_crf(m, ds_test)
+    results = flatten(result_all)
+    targets = flatten(target_all)
     return cal_prec_rec_f1_v2(results, targets)
 
 # m = create_model_with_seed(20, cuda = True, wholeword = True)
@@ -164,3 +248,23 @@ def experiment(epoch = 5, cuda = True, wholeword = True):
         print(results_5X5X5)
     return results_5X5X5
 
+def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
+    results_5X5X5 = []
+    train_dss = read_trains()
+    test_dss = read_tests()
+    for _, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
+        fs_by_model = []
+        for idx in range(5):
+            m = create_model_with_seed(RANDOM_SEEDs[idx], cuda, wholeword)
+            fs = []
+            for e in range(epoch):
+                train_no_crf(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
+                result = test_chain_no_crf(m, ds_test)
+                print(result)
+                _,_,f,_ = result
+                fs.append(f)
+            fs_by_model.append(fs)
+        results_5X5X5.append(fs_by_model)
+        print('results_5X5X5:')
+        print(results_5X5X5)
+    return results_5X5X5
