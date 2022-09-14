@@ -230,7 +230,7 @@ def run(m):
 RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
 
 def write_result(path, result):
-    f = open(path)
+    f = open(path, 'w')
     f.write(str(result))
     f.close()
     print('RESULT WRITTEN')
