@@ -249,7 +249,7 @@ def experiment(epoch = 5, cuda = True, wholeword = True):
                 result = test_chain(m, ds_test)
                 print(result)
                 _,_,f,_ = result
-                fs.append(f)
+                fs.append(result)
             fs_by_model.append(fs)
         results_5X5X5.append(fs_by_model)
         print('results_5X5X5:')
@@ -279,3 +279,10 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
         print(results_5X5X5)
     write_result('without_crf.txt', results_5X5X5)
     return results_5X5X5
+
+def run_experiment():
+    experiment_no_crf(epoch = 5, cuda = True, wholeword = True)
+    experiment(epoch = 5, cuda = True, wholeword = True)
+
+
+

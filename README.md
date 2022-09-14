@@ -1,7 +1,7 @@
 # 使い方
 
 ```py
-from main import *
+from main_crf import *
 import numpy as np
 
 result_5X5 = experiment(epoch = 4) # epoch数を変更できる
