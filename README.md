@@ -4,10 +4,9 @@
 from main_crf import *
 import numpy as np
 
-result_5X5 = experiment(epoch = 4) # epoch数を変更できる
-result_5X5 = np.array(result_5X5)
-print(result_5X5.shape) # (5, 5, 4)
-print(result_5X5) # これは結果です
+result_no_crf, result_with_crf = run_experiment()
+result_no_crf = np.array(result_no_crf)
+result_with_crf = np.array(result_with_crf)
 ```
 ## 結果の並べ方
 

@@ -281,8 +281,9 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
     return results_5X5X5
 
 def run_experiment():
-    experiment_no_crf(epoch = 5, cuda = True, wholeword = True)
-    experiment(epoch = 5, cuda = True, wholeword = True)
+    result_no_crf = experiment_no_crf(epoch = 5, cuda = True, wholeword = True)
+    result_with_crf = experiment(epoch = 5, cuda = True, wholeword = True)
+    return result_no_crf, result_with_crf
 
 
 
