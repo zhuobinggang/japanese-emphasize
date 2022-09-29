@@ -10,7 +10,6 @@ from itertools import chain
 from torchcrf import CRF
 from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests
 
-
 RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
 DATASET_ORDER_SEED = 0
 
@@ -284,8 +283,8 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
 
 # Return raw 0 & 1
 def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True):
-    train_dss = read_trains(length = 1)
-    test_dss = read_tests(length = 1)
+    train_dss = read_trains()
+    test_dss = read_tests()
     dic_by_dataset = {}
     for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
         dic_by_model = {}
@@ -305,8 +304,8 @@ def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True):
 
 # Return raw 0 & 1
 def experiment_raw(epoch = 5, cuda = True, wholeword = True):
-    train_dss = read_trains(length = 1)
-    test_dss = read_tests(length = 1)
+    train_dss = read_trains()
+    test_dss = read_tests()
     dic_by_dataset = {}
     for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
         dic_by_model = {}
@@ -334,6 +333,20 @@ def run_experiment_get_raw_output():
     result_no_crf_raw = experiment_no_crf_raw(epoch = 2, cuda = True, wholeword = True)
     result_with_crf_raw = experiment_raw(epoch = 2, cuda = True, wholeword = True)
     return result_no_crf_raw, result_with_crf_raw
+
+
+# =================== AUX ====================
+
+def cal_label_percent():
+    train_dss = read_trains() # 5
+    label_count = 0
+    label_one = 0
+    for train_ds in train_dss: # n
+        for inputs, labels in train_ds: # m
+            label_count += len(labels)
+            label_one += sum(labels)
+    return label_count, label_one
+
 
 
 
