@@ -10,7 +10,7 @@ from itertools import chain
 from torchcrf import CRF
 from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests
 
-RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
+RANDOM_SEEDs = [21, 22, 8, 29, 1648]
 DATASET_ORDER_SEED = 0
 
 def create_model_with_seed(seed, cuda, wholeword):
@@ -48,7 +48,7 @@ class Sector_2022_CRF(nn.Module):
       self.bert.train()
       self.toker = BertJapaneseTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-char')
 
-def test(m, ds_test_org):
+def test(m, ds_test_org, output_possibility = False):
     ds_test = ds_test_org.copy()
     first_time = datetime.datetime.now()
     toker = m.toker
@@ -69,8 +69,14 @@ def test(m, ds_test_org):
             tags = t.LongTensor([labels]) # (1, seq_len)
         out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
         out_mlp = m.classifier(out_bert) # (1, seq_len, 2)
-        results = m.crf.decode(out_mlp)
-        result_all.append(results[0])
+        if not output_possibility:
+            results = m.crf.decode(out_mlp)[0]
+        else:
+            assert out_mlp.shape == (1, len(labels), 2)
+            out_mlp = out_mlp.view(-1, 2)
+            results = out_mlp.softmax(1)[:, 1] # 计算1的概率
+            results = results.tolist()
+        result_all.append(results)
         target_all.append(tags.tolist()[0])
     return result_all, target_all
 
@@ -121,7 +127,7 @@ def train(m, ds_train_org, epoch = 1, batch = 16, iteration_callback = None, ran
     print(delta.seconds)
     return delta.seconds
 
-def test_no_crf(m, ds_test_org):
+def test_no_crf(m, ds_test_org, output_possibility = False):
     ds_test = ds_test_org.copy()
     first_time = datetime.datetime.now()
     toker = m.toker
@@ -144,7 +150,10 @@ def test_no_crf(m, ds_test_org):
         out_bert = out_bert[:, 1:-1, :] # (1, seq_len, 768)
         out_mlp = m.classifier(out_bert) # (1, seq_len, 2)
         out_mlp = out_mlp.view(SEQ_LEN, 2)
-        results = out_mlp.argmax(1) # (seq_len)
+        if output_possibility:
+            results = out_mlp.softmax(1)[:, 1]
+        else:
+            results = out_mlp.argmax(1) # (seq_len)
         result_all.append(results.tolist())
         target_all.append(tags.tolist()[0])
     return result_all, target_all
@@ -282,18 +291,18 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
 
 
 # Return raw 0 & 1
-def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True):
-    train_dss = read_trains()
-    test_dss = read_tests()
+def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True, output_possibility = True):
+    train_dss = read_trains(5) # NOTE: 5
+    test_dss = read_tests(5) # NOTE: 5
     dic_by_dataset = {}
     for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
         dic_by_model = {}
-        for idx in range(5):
+        for idx in range(5): # NOTE: 5
             m = create_model_with_seed(RANDOM_SEEDs[idx], cuda, wholeword)
             dic = {}
-            for e in range(epoch):
+            for e in range(epoch): # NOTE: 5
                 train_no_crf(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
-            ys_pred, ys_true = test_no_crf(m, ds_test)
+            ys_pred, ys_true = test_no_crf(m, ds_test, output_possibility = output_possibility)
             dic['y_pred'] = ys_pred
             dic['y_true'] = ys_true
             dic_by_model[f'model{idx}'] = dic
@@ -303,9 +312,9 @@ def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True):
 
 
 # Return raw 0 & 1
-def experiment_raw(epoch = 5, cuda = True, wholeword = True):
-    train_dss = read_trains()
-    test_dss = read_tests()
+def experiment_raw(epoch = 5, cuda = True, wholeword = True, output_possibility = True):
+    train_dss = read_trains(5)
+    test_dss = read_tests(5)
     dic_by_dataset = {}
     for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
         dic_by_model = {}
@@ -314,7 +323,7 @@ def experiment_raw(epoch = 5, cuda = True, wholeword = True):
             dic = {}
             for e in range(epoch):
                 train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
-            ys_pred, ys_true = test(m, ds_test)
+            ys_pred, ys_true = test(m, ds_test, output_possibility = output_possibility)
             dic['y_pred'] = ys_pred
             dic['y_true'] = ys_true
             dic_by_model[f'model{idx}'] = dic
@@ -330,8 +339,8 @@ def run_experiment():
 
 
 def run_experiment_get_raw_output():
-    result_no_crf_raw = experiment_no_crf_raw(epoch = 2, cuda = True, wholeword = True)
-    result_with_crf_raw = experiment_raw(epoch = 2, cuda = True, wholeword = True)
+    result_no_crf_raw = experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True, output_possibility = True) # NOTE
+    result_with_crf_raw = experiment_raw(epoch = 5, cuda = True, wholeword = True, output_possibility = True) # NOTE
     return result_no_crf_raw, result_with_crf_raw
 
 
