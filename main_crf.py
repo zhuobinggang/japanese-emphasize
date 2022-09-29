@@ -8,7 +8,11 @@ from transformers import BertJapaneseTokenizer, BertModel
 import datetime
 from itertools import chain
 from torchcrf import CRF
-from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests, DATASET_ORDER_SEED
+from main import read_train, read_test, encode, flatten, cal_prec_rec_f1_v2, read_trains, read_tests
+
+
+RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
+DATASET_ORDER_SEED = 0
 
 def create_model_with_seed(seed, cuda, wholeword):
     t.manual_seed(seed)
@@ -142,7 +146,7 @@ def test_no_crf(m, ds_test_org):
         out_mlp = m.classifier(out_bert) # (1, seq_len, 2)
         out_mlp = out_mlp.view(SEQ_LEN, 2)
         results = out_mlp.argmax(1) # (seq_len)
-        result_all.append(results)
+        result_all.append(results.tolist())
         target_all.append(tags.tolist()[0])
     return result_all, target_all
 
@@ -226,9 +230,6 @@ def run(m):
         results.append(result)
     return results
 
-
-RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
-
 def write_result(path, result):
     f = open(path, 'w')
     f.write(str(result))
@@ -280,10 +281,59 @@ def experiment_no_crf(epoch = 5, cuda = True, wholeword = True):
     write_result('without_crf.txt', results_5X5X5)
     return results_5X5X5
 
+
+# Return raw 0 & 1
+def experiment_no_crf_raw(epoch = 5, cuda = True, wholeword = True):
+    train_dss = read_trains(length = 1)
+    test_dss = read_tests(length = 1)
+    dic_by_dataset = {}
+    for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
+        dic_by_model = {}
+        for idx in range(5):
+            m = create_model_with_seed(RANDOM_SEEDs[idx], cuda, wholeword)
+            dic = {}
+            for e in range(epoch):
+                train_no_crf(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
+            ys_pred, ys_true = test_no_crf(m, ds_test)
+            dic['y_pred'] = ys_pred
+            dic['y_true'] = ys_true
+            dic_by_model[f'model{idx}'] = dic
+        dic_by_dataset[f'dataset{dataset_idx}'] = dic_by_model
+    write_result('without_crf_raw.txt', dic_by_dataset)
+    return dic_by_dataset
+
+
+# Return raw 0 & 1
+def experiment_raw(epoch = 5, cuda = True, wholeword = True):
+    train_dss = read_trains(length = 1)
+    test_dss = read_tests(length = 1)
+    dic_by_dataset = {}
+    for dataset_idx, (ds_train, ds_test) in enumerate(zip(train_dss, test_dss)):
+        dic_by_model = {}
+        for idx in range(5):
+            m = create_model_with_seed(RANDOM_SEEDs[idx], cuda, wholeword)
+            dic = {}
+            for e in range(epoch):
+                train(m, ds_train, epoch = 1, batch = 16, iteration_callback = None, random_seed = True)
+            ys_pred, ys_true = test(m, ds_test)
+            dic['y_pred'] = ys_pred
+            dic['y_true'] = ys_true
+            dic_by_model[f'model{idx}'] = dic
+        dic_by_dataset[f'dataset{dataset_idx}'] = dic_by_model
+    write_result('with_crf_raw.txt', dic_by_dataset)
+    return dic_by_dataset
+
+
 def run_experiment():
     result_no_crf = experiment_no_crf(epoch = 5, cuda = True, wholeword = True)
     result_with_crf = experiment(epoch = 5, cuda = True, wholeword = True)
     return result_no_crf, result_with_crf
+
+
+def run_experiment_get_raw_output():
+    result_no_crf_raw = experiment_no_crf_raw(epoch = 2, cuda = True, wholeword = True)
+    result_with_crf_raw = experiment_raw(epoch = 2, cuda = True, wholeword = True)
+    return result_no_crf_raw, result_with_crf_raw
 
 
 

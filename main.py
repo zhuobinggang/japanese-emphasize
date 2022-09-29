@@ -8,6 +8,9 @@ from transformers import BertJapaneseTokenizer, BertModel
 import datetime
 from itertools import chain
 
+RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
+DATASET_ORDER_SEED = 0
+
 def label_to_number(case):
     tokens, labels = case
     # tokens = ''.join(tokens)
@@ -32,17 +35,21 @@ def read_train(name = 'data_five/1/train.txt'):
     data = [label_to_number(case) for case in data]
     return data
 
-def read_tests():
+def read_tests(length = 5):
     datas = []
-    for i in range(1, 6):
+    start = 1
+    end = 1 + length
+    for i in range(start, end):
         data = readfile(f'data_five/{i}/test.txt')
         data = [label_to_number(case) for case in data]
         datas.append(data)
     return datas
 
-def read_trains():
+def read_trains(length = 5):
     datas = []
-    for i in range(1, 6):
+    start = 1
+    end = 1 + length
+    for i in range(start, end):
         data = readfile(f'data_five/{i}/train.txt')
         data = [label_to_number(case) for case in data]
         datas.append(data)
@@ -216,8 +223,6 @@ def run():
         results.append(result)
     return results
 
-RANDOM_SEEDs = [21, 22, 8, 29, 1648, 1,2]
-DATASET_ORDER_SEED = 0
     
 def experiment(epoch = 5, cuda = True, wholeword = True):
     results_5X5X5 = []
